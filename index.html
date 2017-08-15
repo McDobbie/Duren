@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>three.js canvas - geometry - hierarchy</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+      body {
+        background:#fff;
+        padding:0;
+        margin:0;
+        font-weight: bold;
+        overflow:hidden;
+      }
+    </style>
+    <link type="text/css" rel="stylesheet" href="assets/animate.css">
+    <link type="text/css" rel="stylesheet" href="assets/style.css">
+  </head>
+  <body>
+    <div class="close">X</div>
+    <div class="specificContent" id="ph">
+      <h1 > <strong class="tlt" data-in-effect="fadeIn" data-out-effect="fadeOut">pH</strong> </h1>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">pH is a measure of the acidity or alkalinity of a solution.</p>
+      <div class="animated fadeIn"><img class="illustration" src="img/a.png" alt=""></div>
+      <h3> <strong>𝝞 Characteristics</strong></h3>
+      <div class="animated fadeIn"><img id="illustrationMain" class="illustration" src="img/purewater.png" alt=""></div>
+      <h3> <strong>𝝞 Tips</strong></h3>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">pH < 6.5 : acidic / soft / corrosive</p>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">pH > 8.5 : alkaline / hard</p>
+      <div> <a href="https://en.wikipedia.org/wiki/PH" class="btn" >How to IMPROVE</a> </div>
+      <div class="valueBar">
+        <img class="valBtn" id="valimg_1" src="img/1a.png" alt="">
+        <img class="valBtn" id="valimg_2" src="img/2a.png" alt="">
+        <img class="valBtn" id="valimg_3" src="img/3a.png" alt="">
+      </div>
+    </div>
+
+    <div class="specificContent" id="cryptosporidium">
+      <h1 class="tlt" data-in-effect="rollIn" data-out-effect="rollOut"> Cryptosporidium </h1>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">
+        Under construction...
+      </p>
+    </div>
+    <div class="specificContent" id="cl">
+      <h1 class="tlt" data-in-effect="rollIn" data-out-effect="rollOut"> Cl2 </h1>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">
+        Under construction...
+      </p>
+    </div>
+    <div class="specificContent" id="e-coli">
+      <h1 class="tlt" data-in-effect="rollIn" data-out-effect="rollOut"> E-coli </h1>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">
+        Under construction...
+      </p>
+    </div>
+        <div class="specificContent" id="WQI">
+      <h1 class="tlt" data-in-effect="rollIn" data-out-effect="rollOut"> Water Quality Index </h1>
+      <p class="tlt" data-in-effect="rollIn" data-out-effect="rollOut">
+        Under construction...
+      </p>
+    </div>
+
+    <script src="build/three.js"></script>
+
+    <script src="js/renderers/Projector.js"></script>
+    <script src="js/renderers/CanvasRenderer.js"></script>
+    <script src="js/loaders/OBJLoader.js"></script>
+    <script src="js/ImprovedNoise.js"></script>
+    <script src="js/TrackballControls.js"></script>
+
+    <script src="js/libs/stats.min.js"></script>
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="assets/jquery.lettering.js"></script>
+    <script src="assets/jquery.fittext.js"></script>
+    <script src="js/jquery.textillate.js"></script>
+
+    <script>
+      var container, stats;
+      var camera, scene, renderer, pointLight, cameraPos;
+      var loadingMng, loadFlag, WQIfont, WQI = "23", group_ph, objNum = 5;
+      var geometry;
+      var mouseX = 0, mouseY = 0;
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
+      var objects = new Array();
+
+      var raycaster;
+      var mouse;
+
+      var mode = [
+        "entry",
+        "observe",
+        "specific"
+      ];
+      var currentMode = mode[0];
+      var targetObj, targetPos;
+      var clock;
+
+      document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+      init();
+      animate();
+
+
+      function generateHeight( width, height ) {
+        var size = width * height, data = new Uint8Array( size ),
+        perlin = new ImprovedNoise(), quality = 1, z =  88.7;//adjust the landscape
+        console.log(z);
+        for ( var j = 0; j < 4; j ++ ) {
+          for ( var i = 0; i < size; i ++ ) {
+            var x = i % width, y = ~~ ( i / width );
+            data[ i ] += Math.abs( perlin.noise( x / quality, y / quality, z ) * quality * 1.75 );
+          }
+          quality *= 5;
+        }
+        return data;
+      }
+      function generateTexture( data, width, height ) {
+        var canvas, context, image, imageData,
+        level, diff, vector3, sun, shade;
+        vector3 = new THREE.Vector3( 0, 0, 0 );
+        sun = new THREE.Vector3( 1, 1, 1 );
+        sun.normalize();
+        canvas = document.createElement( 'canvas' );
+        canvas.width = width;
+        canvas.height = height;
+        context = canvas.getContext( '2d' );
+        context.fillStyle = '#000000';
+        context.fillRect( 0, 0, width, height );
+        image = context.getImageData( 0, 0, canvas.width, canvas.height );
+        imageData = image.data;
+        for ( var i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++ ) {
+          vector3.x = data[ j - 2 ] - data[ j + 2 ];
+          vector3.y = 2;
+          vector3.z = data[ j - width * 2 ] - data[ j + width * 2 ];
+          vector3.normalize();
+          shade = vector3.dot( sun );
+          imageData[ i ] = ( 0 + shade * 96 ) * ( 0.5 + data[ j ] * 0.007 );
+          imageData[ i + 1 ] = ( 0 + shade * 96 ) * ( 0.5 + data[ j ] * 0.007 );
+          imageData[ i + 2 ] = ( shade * 96 ) * ( 0.5 + data[ j ] * 0.007 );
+        }
+        context.putImageData( image, 0, 0 );
+        context.drawImage( canvas, 0, 0 );
+        image = context.getImageData( 0, 0, canvas.width, canvas.height );
+        imageData = image.data;
+        for ( var i = 0, l = imageData.length; i < l; i += 4 ) {
+          var v = ~~ ( Math.random() * 5 );
+          imageData[ i ] += v;
+          imageData[ i + 1 ] += v;
+          imageData[ i + 2 ] += v;
+        }
+        context.putImageData( image, 0, 0 );
+        return canvas;
+      }
+
+      function loadFont(file) {
+
+        var loader = new THREE.FontLoader();
+        loader.load( file, function ( response ) {
+          WQIfont = response;
+          //console.log(WQIfont);       
+          createText(WQI, WQIfont);
+        } );
+
+      }
+      function createText(text, font){
+        var textGeo = new THREE.TextBufferGeometry(text, {
+          font : font,
+          size : 20,
+          height : 20,
+          curveSegments : 4,
+          bevelThickness : 1,
+          bevelSize : 1.5,
+          bevelEnabled : false,
+          material : 0,
+          extrudeMaterial : 1
+        });
+        textGeo.computeBoundingBox();
+        textGeo.computeVertexNormals();
+
+        materials = [
+          new THREE.MeshPhongMaterial( { color: 0xC1FFC1, shading: THREE.FlatShading } ), // front
+          new THREE.MeshPhongMaterial( { color: 0xffffff, shading: THREE.SmoothShading } ) // side
+        ];
+        var textMesh1 = new THREE.Mesh( textGeo, materials );
+        textMesh1.position.set(cameraPos.x , cameraPos.y - 40 , cameraPos.z - 100);
+        objects[5] = textMesh1;
+        scene.add(textMesh1);
+        $('#WQI').attr('id', objects[5].id);
+      }
+
+      function onload(object, textureImg, position){
+        object.traverse(function(child) {
+            if(child instanceof THREE.Mesh) {
+              var texture = new THREE.Texture();
+              var imgLoader = new THREE.ImageLoader(loadingMng);
+              imgLoader.load(textureImg, function(image) {
+                texture.image = image;
+                texture.needsUpdate = true;
+              });              
+              child.material.map = texture;
+            }
+          });
+          loadFlag++;
+          object.children[0].position.copy(position); 
+        if(loadFlag == objNum){
+            allLoaded();
+        }
+        return object.children[0];
+      }
+
+      function allLoaded(){
+          var la = objects[0].position.clone();
+          la.x -= 40;
+          la.y += 20;
+          camera.lookAt(la);
+          scene.add(group_ph);
+      }
+      function onLoad_ecoli (object) {
+        var mesh = onload(object, 'textures/e-coli.jpg', new THREE.Vector3(cameraPos.x + 50, cameraPos.y - 16, cameraPos.z - 300));
+        objects[0] = mesh;
+        scene.add(mesh);
+        $('#e-coli').attr('id', mesh.id);
+      }
+
+      function onLoad_pha (object) {
+          var mesh = onload(object, 'textures/ph_a.jpg', new THREE.Vector3(cameraPos.x + 20, cameraPos.y + 63, cameraPos.z - 200));
+          objects[3] = mesh;
+          scene.add(mesh);
+          $('#ph').attr('id', mesh.id);
+      }
+      function onLoad_phb (object) {
+          var mesh = onload(object, 'textures/ph_b.jpg', new THREE.Vector3(cameraPos.x + 20, cameraPos.y + 63, cameraPos.z - 200));
+          objects[4] = mesh;
+          scene.add(mesh);
+          // group_ph.add(mesh);
+      }
+      function onLoad_cryptosporidium (object) {
+        var mesh = onload(object, 'textures/cryptosporidium.jpg', new THREE.Vector3(cameraPos.x - 80, cameraPos.y - 60, cameraPos.z - 350));
+        objects[1] = mesh;
+        scene.add(mesh);
+        $('#cryptosporidium').attr('id', mesh.id);
+      }
+      function onLoad_cl (object) {
+        object.traverse(function(child) {
+          if(child instanceof THREE.Mesh) {
+            child.material = new THREE.MeshPhongMaterial( { color: 0xffffff, transparent: true, opacity: 0.5  } );  
+          }
+        });
+        objects[2] = object.children[0];
+        loadFlag++;
+        object.children[0].position.copy(new THREE.Vector3(cameraPos.x - 30, cameraPos.y + 20, cameraPos.z - 400));
+        scene.add(object.children[0]);
+        if(loadFlag == objNum){
+            allLoaded();
+            console.log(objects);
+        }
+        $('#cl').attr('id', objects[2].id);            
+      }
+
+      function init() {
+        //general initiation
+        clock = new THREE.Clock();
+
+        container = document.createElement( 'div' );
+        document.body.appendChild( container );
+        //camera settings
+        camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
+        //soungd
+        var listener = new THREE.AudioListener();
+        camera.add( listener );
+        var audioLoader = new THREE.AudioLoader();
+        var sound1 = new THREE.PositionalAudio( listener );
+        audioLoader.load( 'sounds/358232_j_s_song.ogg', function( buffer ) {
+          sound1.setBuffer( buffer );
+          sound1.setRefDistance( 20 );
+          sound1.play();
+        });
+        //scene settings
+        scene = new THREE.Scene();
+
+        //controls
+        //background
+        scene.fog = new THREE.FogExp2( 0xffffff, 0.0015 );
+        var worldWidth = 128, worldDepth = 128,
+        worldHalfWidth = worldWidth / 2, worldHalfDepth = worldDepth / 2;
+        var data = generateHeight( worldWidth, worldDepth );
+        var geometry = new THREE.PlaneBufferGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
+        geometry.rotateX( - Math.PI / 2 );
+        var vertices = geometry.attributes.position.array;
+        for ( var i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3 ) {
+          vertices[ j + 1 ] = data[ i ] * 10;
+        }
+        var textureBG = new THREE.CanvasTexture( generateTexture( data, worldWidth, worldDepth ) );
+        textureBG.wrapS = THREE.ClampToEdgeWrapping;
+        textureBG.wrapT = THREE.ClampToEdgeWrapping;
+        mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: textureBG } ) );
+        targetPos = mesh.position;
+        scene.add( mesh );
+
+        camera.position.y = data[ worldHalfWidth + worldHalfDepth * worldWidth ] * 10 + 200;
+        cameraPos = camera.position.clone();
+
+        //light
+        // var ambient = new THREE.AmbientLight( 0xffffff, 0.5 );
+        // scene.add( ambient );
+
+        // var directionalLight = new THREE.DirectionalLight( 0xF0FFFF );
+        // directionalLight.position.set( 0, 0, 1 );
+        // scene.add( directionalLight );
+        var sphere = new THREE.SphereGeometry( 0.5, 16, 8 );
+        pointLight = new THREE.PointLight( 0xffffff, 2, 200 );
+        pointLight.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
+        scene.add( pointLight );
+
+        //loading geometries and texture as meshes
+        loadFont("fonts/helvetiker_bold.typeface.json");
+
+        loadingMng = new THREE.LoadingManager();
+        loadingMng.onProgress = function(item, loaded, total) {
+          console.log(item, loaded, total);
+        };
+
+        var onProgress = function(xhr) {
+          if(xhr.lengthComputable) {
+            var percentComplete = xhr.loaded / xhr.total * 100;
+            console.log(Math.round(percentComplete, 2) + '% downloaded');
+          }
+        };
+        var onError = function(xhr) {};
+
+        var objLoader = new THREE.OBJLoader(loadingMng);
+        loadFlag = 0;
+        group_ph = new THREE.Group();
+        objLoader.load('obj/0809_E-coli.obj', onLoad_ecoli, onProgress, onError);
+        objLoader.load('obj/0810_pha.obj', onLoad_pha, onProgress, onError);
+        objLoader.load('obj/0810_phb.obj', onLoad_phb, onProgress, onError);
+        objLoader.load('obj/0809_Cryptosporidium.obj', onLoad_cryptosporidium, onProgress, onError);
+        objLoader.load('obj/0809_cl.obj', onLoad_cl, onProgress, onError);
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor( 0xffffff );
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+
+        stats = new Stats();
+        container.appendChild( stats.dom );
+
+        document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+        document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+        //
+        window.addEventListener( 'resize', onWindowResize, false );
+      }
+
+      function onWindowResize() {
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+      }
+
+      function onDocumentMouseMove(event) {
+        mouseX = ( event.clientX - windowHalfX ) * 10;
+        mouseY = ( event.clientY - windowHalfY ) * 10;
+      }
+
+      function onDocumentTouchStart( event ) {
+
+        event.preventDefault();
+
+        event.clientX = event.touches[0].clientX;
+        event.clientY = event.touches[0].clientY;
+        onDocumentMouseDown( event );
+
+      }
+      function onDocumentMouseDown( event ) {
+
+        event.preventDefault();
+
+        mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+        mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+
+        raycaster.setFromCamera( mouse, camera );
+        var intersects = raycaster.intersectObjects( objects );
+
+        if ( intersects.length > 0 && currentMode!=mode[2] ) {
+          if (mode[0] == currentMode ) {
+            currentMode=mode[1];
+            targetObj = intersects[ 0 ].object;
+            targetPos = targetObj.position.clone();
+            targetPos.z += 140;       
+          }else if(currentMode == mode[1]){
+            if (targetObj.id == objects[4].id) {
+              $('#'+objects[3].id).fadeIn(600);
+            }else{
+              $('#'+targetObj.id).fadeIn(600);
+            }
+            $('.tlt').textillate('in');
+            currentMode = mode[2];
+          } 
+        }else if(currentMode == mode[1] && intersects.length == 0){
+          currentMode=mode[0];
+        }         
+      }
+
+      function cameraFollow(targetPos, alpha){
+          camera.position.lerp(targetPos, alpha);
+      }
+
+      function rotation(currentSeconds){
+        objects[0].rotation.y = Math.sin( currentSeconds * -0.0003 );
+        objects[0].rotation.z = Math.sin( currentSeconds * 0.0005 );
+        objects[1].rotation.x = Math.sin( currentSeconds * 0.0001 );
+        objects[1].rotation.y = Math.sin( currentSeconds * 0.0003 );
+        objects[1].rotation.z = Math.sin( currentSeconds * -0.0007 );
+        objects[2].rotation.x = Math.sin( currentSeconds * -0.0002 );
+        objects[2].rotation.y = Math.sin( currentSeconds * -0.0004 );
+        objects[2].rotation.z = Math.sin( currentSeconds * -0.0006 );
+        objects[3].rotation.x = Math.sin( currentSeconds * -0.0005 );
+        objects[3].rotation.y = Math.sin( currentSeconds * -0.0005 );
+        objects[3].rotation.z = Math.sin( currentSeconds * -0.0003 );
+        objects[4].rotation.x = Math.sin( currentSeconds * -0.0005 );
+        objects[4].rotation.y = Math.sin( currentSeconds * -0.0005 );
+        objects[4].rotation.z = Math.sin( currentSeconds * -0.0003 );            
+      }
+      //
+
+      function animate() {
+        requestAnimationFrame( animate );
+        render();
+
+        stats.update();
+      }
+      function render() {
+        var delta = clock.getDelta();
+        if (loadFlag == objNum) {
+          if(currentMode==mode[0]){
+            cameraFollow(cameraPos, delta);
+          }else if(currentMode==mode[1]){
+            cameraFollow(targetPos, delta);
+          }
+          // camera.position.x += ( mouseX - camera.position.x ) * .05;
+          // camera.position.y += ( - mouseY - camera.position.y ) * .05;
+          var currentSeconds = Date.now();
+          rotation(currentSeconds)
+        }
+        pointLight.position.copy(camera.position);
+        renderer.render( scene, camera );
+      }
+    </script>
+
+    <script>
+    var ph = [
+      "img/purewater.png",
+      "img/blood.png",
+      "img/groundwater.png",
+      "img/seawater.png"
+    ];
+    var disease = [
+      "img/bacteria.png",
+      "img/kidney.png",
+      "img/stomach.png",
+      "img/teeth.png"
+    ];
+    var count = 0;
+    jQuery(document).ready(function($) {
+      $(function () {
+        $('.tlt').textillate({
+          in:{
+            shuffle: true,
+          },
+          out:{
+            shuffle: true,
+          }
+        });
+
+        $('#illustrationMain').on('click touchstart',function(event) {
+          $('#illustrationMain').fadeOut('fast', function() {
+            count = (count+1)%4;
+            $('#illustrationMain').attr('src', ph[count]);
+            $('#illustrationMain').fadeIn();
+          });;
+          console.log("click");
+        });
+
+        $('.close').on('click touchstart',function(event) {
+          $('.specificContent').fadeOut('slow', function() {
+            currentMode = mode[1];
+          });
+        });
+
+        $('#valimg_1').on('click touchstart',function(event) {
+          $('#illustrationMain').fadeOut('fast', function() {
+            $('#illustrationMain').attr('src', 'img/phdisease1.png');
+            $('#illustrationMain').fadeIn();        
+          });
+       });
+
+        $('#valimg_3').on('click touchstart',function(event) {
+          $('#illustrationMain').fadeOut('fast', function() {
+            $('#illustrationMain').attr('src', 'img/phdisease2.png');
+            $('#illustrationMain').fadeIn();        
+          });
+       });
+        $('#valimg_2').on('click touchstart',function(event) {
+          $('#illustrationMain').fadeOut('fast', function() {
+            $('#illustrationMain').attr('src', ph[0]);
+            $('#illustrationMain').fadeIn();        
+          });
+       });
+    });   
+  });   
+
+    </script>
+
+  </body>
+</html>
